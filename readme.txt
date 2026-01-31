@@ -42,7 +42,7 @@ Known issues:
 
 Changelog
 v1.8
-[!]Restore gclite_filter.txt functionality on modern firmwares. (On PSP Go, each storage device gets its own gclite_filter.txt)
+[!]Restore gclite_filter.txt function on modern FWs. (On PSP Go, each device gets its own gclite_filter.txt)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
