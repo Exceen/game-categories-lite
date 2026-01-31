@@ -41,7 +41,7 @@ Known issues:
   as 8 chars.
 
 Changelog
-v1.8
+v1.8 (January 30, 2026):
 [!]Restore gclite_filter.txt function on modern FWs. (On PSP Go, each device gets its own gclite_filter.txt)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
