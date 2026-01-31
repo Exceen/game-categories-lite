@@ -45,6 +45,7 @@ static SceUID fakefd = -1;
 static SceUID realfd = -1;
 static SceUID openfd = -1;
 static int uncategorized;
+static int browsing_iso = 0;
 static char user_buffer[256];
 static char mod_base[128];
 static char opened_path[128];
@@ -75,10 +76,18 @@ int is_category_folder(SceIoDirent *dir) {
                 }
             } else {
                 if(!config.prefix && FindCategory(cat_list, dir->d_name, global_pos)) {
+                    // Also check filter for ISO categories (filter already applied to /PSP/GAME in IndexCategories)
+                    if(check_filter(dir->d_name)) {
+                        return 0;
+                    }
                     return 1;
                 }
             }
             if(config.prefix && sce_paf_private_strncmp(dir->d_name, "CAT_", 4) == 0) {
+                // Check filter for prefixed ISO categories
+                if(check_filter(dir->d_name + 4)) {
+                    return 0;
+                }
                 return 1;
             }
         }
@@ -95,6 +104,10 @@ int is_category_folder(SceIoDirent *dir) {
 
 SceUID sceIoDopenPatched(const char *path) {
     SceUID fd = sceIoDopen(path);
+
+    // Check if browsing /ISO folder (for filter support)
+    browsing_iso = (!*category && sce_paf_private_strcmp(path + 4, "/ISO") == 0);
+    kprintf("browsing_iso: %d, path: %s\n", browsing_iso, path);
 
     // only make a backup of the opened path if the game folder is opened in uncategorized mode
     if (!*category && sce_paf_private_strcmp(path + 4, GAME_FOLDER) == 0) {
@@ -159,11 +172,11 @@ int sceIoDreadPatchedFolder(SceUID fd, SceIoDirent *dir) {
             if (res > 0) {
                 kprintf("checking %s\n", dir->d_name);
                 if (dir->d_name[0] != '.') {
-                    if(is_category_folder(dir) && has_directories(opened_path, dir->d_name)) {
+                    if(!check_filter(dir->d_name) && is_category_folder(dir) && has_directories(opened_path, dir->d_name)) {
                         u64 mtime;
 
                         kprintf("category match: %s\n", dir->d_name);
-                        sceRtcGetTick((pspTime *) &dir->d_stat.st_mtime, &mtime);
+                        sceRtcGetTick((ScePspDateTime *) &dir->d_stat.sce_st_mtime, &mtime);
                         kprintf("Adding %s\n", dir->d_name);
                         if(AddCategory(folder_list, dir->d_name, mtime, global_pos)) {
                             sce_paf_private_snprintf(user_buffer, 128, "%s/%s", opened_path, dir->d_name);
@@ -209,6 +222,20 @@ int sceIoDreadPatched(SceUID fd, SceIoDirent *dir) {
 
     while((ret = sceIoDread(fd, dir)) > 0) {
         kprintf("read dir: [%s]\n", dir->d_name);
+
+        // Filter ISO category folders when browsing /ISO root
+        if(browsing_iso && FIO_S_ISDIR(dir->d_stat.st_mode)) {
+            const char *name = dir->d_name;
+            // Strip CAT_ prefix if present for filter check
+            if(config.prefix && sce_paf_private_strncmp(name, "CAT_", 4) == 0) {
+                name = dir->d_name + 4;
+            }
+            if(check_filter(name)) {
+                kprintf("filtering ISO category: [%s]\n", dir->d_name);
+                continue;  // skip this filtered category
+            }
+        }
+
         if(!check_filter(dir->d_name) && (*category || !*opened_path || dir->d_name[0] == '.' || is_game_folder(opened_path, dir->d_name))) {
             break;
         }

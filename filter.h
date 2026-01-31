@@ -23,5 +23,6 @@
 int load_filter();
 void unload_filter();
 int check_filter(const char *str);
+int check_filter_for(const char *str, int location);
 
 #endif /* FILTER_H_ */

@@ -2,7 +2,7 @@ Game Categories Lite
 
 This plugin is based and uses source code from Game Categories Revised v12 (GCR)
 and Game Categories Light v1.3 (GCL), both created by Bubbletune. Compatible with
-6.20, 6.3x and 6.60 CFW.
+6.20, 6.3x and 6.6X CFW.
 
 I changed the name of the project (doing a fork in the process) to avoid confusion
 with GCL and GCR (the plugin is based heavily in GCL since it doesn't use a
@@ -41,6 +41,9 @@ Known issues:
   as 8 chars.
 
 Changelog
+v1.8
+[!]Restore gclite_filter.txt functionality on modern firmwares. (On PSP Go, each storage device gets its own gclite_filter.txt)
+[!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
 v1.6:

@@ -23,6 +23,7 @@
 #include "categories_lite.h"
 #include "psppaf.h"
 #include "config.h"
+#include "filter.h"
 #include "logger.h"
 
 static const char *eboot_types[] = { "EBOOT.PBP", "PARAM.PBP", "PBOOT.PBP" };
@@ -225,19 +226,25 @@ void IndexCategories(Category *head[], const char *path, int location) {
         }
         kprintf("checking [%s], length: %i\n", dir.d_name, sce_paf_private_strlen(dir.d_name));
         if (FIO_S_ISDIR(dir.d_stat.st_mode) && dir.d_name[0] != '.') {
+            if(check_filter_for(dir.d_name, location)) {
+                continue;
+            }
             if(!config.prefix && !is_game_folder(full_path, dir.d_name)) {
                 if(has_directories(full_path, dir.d_name) > 0) {
                     match = 1;
                 }
             }else if(config.prefix && sce_paf_private_strncmp(dir.d_name, "CAT_", 4) == 0) {
                 if(has_directories(full_path, dir.d_name) > 0) {
-                    sce_paf_private_strcpy(dir.d_name, dir.d_name + 4);
+                    // Safe in-place shift (avoid overlap-unsafe strcpy that crashes on LME)
+                    const char *src = dir.d_name + 4;
+                    char *dst = dir.d_name;
+                    while((*dst++ = *src++));
                     match = 1;
                 }
             }
             if(match) {
                 match = 0;
-                sceRtcGetTick((pspTime *) &dir.d_stat.st_mtime, &mtime);
+                sceRtcGetTick((ScePspDateTime *) &dir.d_stat.sce_st_mtime, &mtime);
                 kprintf("Adding category: [%s]\n", dir.d_name);
                 AddCategory(head, dir.d_name, mtime, location);
             }

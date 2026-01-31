@@ -22,7 +22,7 @@ category_lang:
 	bin2c lang/category_lite_$(CONFIG_LANG).txt category_lite_lang.h category_lite_lang
 
 EXTRA_WARNS= -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wwrite-strings -Wunreachable-code
-CFLAGS =-O2 -Wall -G0 -std=c99 -fshort-wchar $(EXTRA_WARNS)
+CFLAGS =-O2 -Wall -G0 -std=c99 -fshort-wchar -fcommon $(EXTRA_WARNS)
 
 ifeq ($(DEBUG), 1)
 CFLAGS+=-DDEBUG
