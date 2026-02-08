@@ -930,7 +930,7 @@ int check_game_filter_for(const char *path, int location) {
     if(buf == NULL) return 0;
     normalize_game_path(path, norm_path, sizeof(norm_path));
     if(!*norm_path) return 0;
-    // ISO-like entries are not hidden by gclite_filters (reduces XMB category overhead)
+    // ISO-like entries are not hidden by gclite_filter (reduces XMB category overhead)
     if(is_isogame_token_path(norm_path) || is_iso_path(norm_path)) {
         kprintf("check_game_filter_for: skipping ISO entry [%s]\n", path);
         return 0;
@@ -1123,7 +1123,7 @@ static int load_filters() {
 
     unload_filter();
     kprintf("loading filters\n");
-    sce_paf_private_strcpy(filebuf, "xx0:/seplugins/gclite_filters.txt");
+    sce_paf_private_strcpy(filebuf, "xx0:/seplugins/gclite_filter.txt");
     SET_DEVICENAME(filebuf, device_root);
     if((fd = sceIoOpen(filebuf, PSP_O_RDONLY, 0777)) < 0) {
         kprintf("filters not found\n");
