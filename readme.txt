@@ -46,7 +46,7 @@ Known issues:
 * Change of category in the PSPGo requires a VSH reset.
 
 >> Unrelated to gclite:
-* ME doesn't merge the categories with the same name between /ISO and /PSP/GAME.
+* ME & vanilla (non-ARK) Adrenaline don't merge the categories with the same name between /ISO and /PSP/GAME.
 
 >> Folder mode limitations/bugs:
 * Max categories: 8 (included uncategorized).
