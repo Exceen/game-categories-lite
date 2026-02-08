@@ -11,9 +11,8 @@ kernel/user approach).
 You can configure the folder prefix (use CAT_ for folders or not), showing uncategorized
 content and change the category mode in system settings.
 
-If you want to hide certain homebrew/game/dlc (not ISOs) from the category listing just create 
-a file named gclite_filters.txt and add entries one per line (make sure that a newline is
-added at the end of the file). Put the file in your seplugins folder.
+If you want to hide certain homebrew/game/dlc (not ISOs) on the XMB, create a file named
+gclite_filters.txt and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported: ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0,"
 prefix), ===HIDDEN APPS=== (full paths, optional ms0:/ or ef0:/ prefix).
 
@@ -26,7 +25,7 @@ ef0, Homebrew
 
 ===HIDDEN APPS===
 ms0:/PSP/GAME/TempGBA
-ms0:/PSP/GAME/Emulators/s9xTYLme_mod
+ef0:/PSP/GAME/Emulators/s9xTYLme_mod
 ms0:/PSP/GAME/PS1/Final Fantasy VII
 
 
