@@ -11,11 +11,11 @@ kernel/user approach).
 You can configure the folder prefix (use CAT_ for folders or not), showing uncategorized
 content and change the category mode in system settings.
 
-If you want to hide certain update/game/dlc (not ISOs) on the XMB, create a file named gclite_filters.txt
+If you want to hide certain update/game/dlc on the XMB, create a file named gclite_filters.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported:
-===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix)
-===HIDDEN APPS=== (full paths, optional "ms0:/" or "ef0:/" prefix)
+===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix.)
+===HIDDEN APPS=== (full paths, optional "ms0:/" or "ef0:/" prefix. ISOs not supported)
 
 
 Example /seplugins/gclite_filters.txt:
