@@ -1,4 +1,5 @@
 TARGET = category_lite
+DEBUG ?= 1
 STUBS = imports.o scePaf.o func_stubs.o
 CATEGORY_MODES = multims.o context.o vshitem.o mode.o selection.o
 HELPER = clearcache.o  logger.o utils.o config.o filter.o

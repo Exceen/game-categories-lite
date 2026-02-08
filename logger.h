@@ -24,9 +24,11 @@
 #include <stdio.h>
 #include "psppaf.h"
 
-#ifdef DEBUG
+#define GCLITE_LOGGING 0
 
-#define LOGFILE "ms0:/category_lite.log"
+#if defined(DEBUG) && GCLITE_LOGGING
+
+#define LOGFILE "xx0:/category_lite.log"
 
 extern char _buffer_log[256];
 

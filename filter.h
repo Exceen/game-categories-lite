@@ -22,7 +22,9 @@
 
 int load_filter();
 void unload_filter();
-int check_filter(const char *str);
-int check_filter_for(const char *str, int location);
+int check_game_filter(const char *path);
+int check_game_filter_for(const char *path, int location);
+int check_category_filter(const char *name);
+int check_category_filter_for(const char *name, int location);
 
 #endif /* FILTER_H_ */

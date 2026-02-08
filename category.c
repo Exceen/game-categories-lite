@@ -226,7 +226,7 @@ void IndexCategories(Category *head[], const char *path, int location) {
         }
         kprintf("checking [%s], length: %i\n", dir.d_name, sce_paf_private_strlen(dir.d_name));
         if (FIO_S_ISDIR(dir.d_stat.st_mode) && dir.d_name[0] != '.') {
-            if(check_filter_for(dir.d_name, location)) {
+            if(check_category_filter_for(dir.d_name, location)) {
                 continue;
             }
             if(!config.prefix && !is_game_folder(full_path, dir.d_name)) {

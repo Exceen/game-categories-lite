@@ -110,7 +110,9 @@ int module_start(SceSize args UNUSED, void *argp UNUSED) {
     char *dest = filebuf;
 
     model = kuKernelGetModel();
-    while((*dest++ = *src++));
+    while((*dest++ = *src++)) {
+        /* copy */
+    }
     SET_DEVICENAME(filebuf, model == 4 ? INTERNAL_STORAGE : MEMORY_STICK);
     // paf isn't loaded yet
     kwrite(filebuf, "Game Categories Lite v1.7-js1 starting\n", 20);

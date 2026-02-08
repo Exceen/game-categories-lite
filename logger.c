@@ -20,16 +20,27 @@
 #include <pspsdk.h>
 #include <pspiofilemgr.h>
 #include "logger.h"
+#include "categories_lite.h"
 
-#ifdef DEBUG
+extern int model;
+
+#if defined(DEBUG) && GCLITE_LOGGING
 
 char _buffer_log[256];
 
 int kwrite(const char *path, const void *buffer, int buflen) {
     int written = 0;
     SceUID file;
+    const char *use_path = path;
+    char tmp[64];
+    if(path && path[0] == 'x' && path[1] == 'x' && path[2] == '0' && path[3] == ':') {
+        sce_paf_private_strncpy(tmp, path, sizeof(tmp) - 1);
+        tmp[sizeof(tmp) - 1] = '\0';
+        SET_DEVICENAME(tmp, model == 4 ? INTERNAL_STORAGE : MEMORY_STICK);
+        use_path = tmp;
+    }
     //int k1 = pspSdkSetK1(0);
-    file = sceIoOpen(path, PSP_O_APPEND | PSP_O_CREAT | PSP_O_WRONLY, 0777);
+    file = sceIoOpen(use_path, PSP_O_APPEND | PSP_O_CREAT | PSP_O_WRONLY, 0777);
     if(file >= 0) {
         written = sceIoWrite(file, buffer, buflen);
         sceIoClose(file);

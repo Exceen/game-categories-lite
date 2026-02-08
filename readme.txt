@@ -12,8 +12,23 @@ You can configure the folder prefix (use CAT_ for folders or not), showing uncat
 content and change the category mode in system settings.
 
 If you want to hide certain homebrew/game/dlc from the category listing just create a file
-named gclite_filter.txt and add the folders name, one per line (make sure that a newline is
-added at the end of the file). Next, put the file in your seplugins folder.
+named gclite_filters.txt and add entries one per line (make sure that a newline is
+added at the end of the file). Put the file in your seplugins folder.
+Sections supported: ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix),
+===HIDDEN APPS=== (full paths, optional ms0:/ or ef0:/ prefix).
+
+
+Example gclite_filters.txt:
+===HIDDEN CATEGORIES===
+Emulators
+ms0, PSP
+ef0, Homebrew
+
+===HIDDEN APPS===
+ms0:/PSP/GAME/TempGBA
+ef0:/PSP/GAME/UO gpSP kai
+ms0:/PSP/GAME/APP
+
 
 If you want a translation of the visible options then edit the file category_lite_en.txt
 and save it using the language code that first you (e.g. "es" for spanish).
@@ -41,8 +56,8 @@ Known issues:
   as 8 chars.
 
 Changelog
-v1.8 (January 30, 2026):
-[!]Restore gclite_filter.txt function on modern FWs. (On PSP Go, each device gets its own gclite_filter.txt)
+v1.8:
+[+]Move to gclite_filters.txt for hiding categories & apps with ms0:/ & ef0:/ specification support and full paths for hiding apps. (See example gclite_filters.txt above)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
