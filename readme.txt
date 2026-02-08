@@ -1,4 +1,4 @@
-Game Categories Lite v1.8 - Homebrew Sorter Ultimate Edition
+Game Categories Lite v1.8 - Homebrew Sorter Ultimate edition
 
 The main differences in this version are stabilization in the visibility of the
 Game Categories options listed within the System Settings, as well as modifying/enhancing
