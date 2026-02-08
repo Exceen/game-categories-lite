@@ -1,15 +1,8 @@
-Game Categories Lite (v1.8 Homebrew Sorter Ultimate Edition)
+Game Categories Lite v1.8 - Homebrew Sorter Ultimate Edition
 
-This plugin is based and uses source code from Game Categories Revised v12 (GCR)
-and Game Categories Light v1.3 (GCL), both created by Bubbletune. Compatible with
-6.20, 6.3x and 6.6X CFW.
-
-I (i.e. the original author) changed the name of the project (doing a fork in the process) 
-to avoid confusion with GCL and GCR (the plugin is based heavily in GCL since it doesn't use a
-kernel/user approach).
-
-You can configure the folder prefix (use CAT_ for folders or not), showing uncategorized
-content and change the category mode in system settings.
+The main differences in this version are stabilization in the visibility of the
+Game Categories options listed within the System Settings, as well as modifying/enhancing
+the gclite_filter.txt file.
 
 If you want to hide certain update/game/dlc on the XMB, create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
@@ -30,14 +23,19 @@ ef0:/PSP/GAME/Emulators/s9xTYLme_mod
 ms0:/PSP/GAME/PS1/Final Fantasy VII
 
 
+These enhancements were made to add the ability to specify the device and/or filepath where 
+the category/game/update/dlc folder you want to hide resides. The goal in adding this granularity 
+in filtering was to avoid the admittedly minuscule and relatively inconsequential situation of 
+inadvertently hiding folders with the same name stored in different categories. But it was 
+important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact apps 
+you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
+
 If you want a translation of the visible options then edit the file category_lite_en.txt
 and save it using the language code that first you (e.g. "es" for spanish).
 
 Note: you must use UTF-8 encoding for the translation files (without unicode BOM).
 
 Languages supported: "ja", "en", "fr", "es", "de", "it", "nl", "pt", "ru", "ko", "ch1", "ch2"
-
-The source code is also available in https://github.com/codestation/gclite
 
 Notes: make sure that this is the 1st plugin listed in vsh.txt
 
