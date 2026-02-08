@@ -4,7 +4,7 @@ The main differences in this version are stabilization in the visibility of the
 Game Categories options listed within the System Settings, as well as modifications &
 enhancements to the gclite_filter.txt file.
 
-If you want to hide certain update/game/dlc on the XMB, create a file named gclite_filter.txt
+If you want to hide certain update/game/dlc on the XMB (no ISOs), create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported:
 ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix.)
@@ -26,8 +26,8 @@ ms0:/PSP/GAME/PS1/Final Fantasy VII
 These enhancements were made to add the ability to specify the device and/or filepath where 
 the category/game/update/dlc folder you want to hide resides. The goal in adding this granularity 
 in filtering was to avoid the admittedly minuscule and relatively inconsequential situation of 
-inadvertently hiding folders with the same name stored in different categories. But it was 
-important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact apps 
+inadvertently hiding folders with the same name stored across multiple devices/categories. But it 
+was important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact apps 
 you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
 
 If you want a translation of the visible options then edit the file category_lite_en.txt
