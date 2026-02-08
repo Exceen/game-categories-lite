@@ -1,8 +1,8 @@
 Game Categories Lite v1.8 - "Homebrew Sorter Ultimate" Edition
 
 The main differences in this version are stabilization in the visibility of the
-Game Categories options listed within the System Settings, as well as modifying/enhancing
-the gclite_filter.txt file.
+Game Categories options listed within the System Settings, as well as modifications &
+enhancements to the gclite_filter.txt file.
 
 If you want to hide certain update/game/dlc on the XMB, create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
