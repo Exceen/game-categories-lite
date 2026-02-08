@@ -15,7 +15,7 @@ If you want to hide certain homebrew/game/dlc (not ISOs) on the XMB, create a fi
 gclite_filters.txt and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported:
 ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix)
-===HIDDEN APPS=== (full paths, optional ms0:/ or ef0:/ prefix)
+===HIDDEN APPS=== (full paths, optional "ms0:/" or "ef0:/" prefix)
 
 
 Example /seplugins/gclite_filters.txt:
@@ -25,8 +25,8 @@ ms0, PSP
 ef0, Homebrew
 
 ===HIDDEN APPS===
-ms0:/PSP/GAME/TempGBA
 ef0:/PSP/GAME/Emulators/s9xTYLme_mod
+/PSP/GAME/UCUS98744
 ms0:/PSP/GAME/PS1/Final Fantasy VII
 
 
