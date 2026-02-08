@@ -57,7 +57,7 @@ Known issues:
 
 Changelog
 v1.8:
-[+]Move to gclite_filters.txt for hiding categories & apps with ms0:/ & ef0:/ specification support and filepaths for hiding apps. (See example gclite_filters.txt above.)
+[+]Move to gclite_filters.txt for hiding categories & apps with ms0:/ & ef0:/ specification support and filepaths for hiding apps. (See example gclite_filters.txt snippet a few paragraphs above.)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
