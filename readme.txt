@@ -15,7 +15,7 @@ If you want to hide certain update/game/dlc on the XMB, create a file named gcli
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported:
 ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix.)
-===HIDDEN APPS=== (full paths, optional "ms0:/" or "ef0:/" prefix. ISOs not supported.)
+===HIDDEN APPS=== (filepaths, optional "ms0:/" or "ef0:/" prefix. ISOs not supported.)
 
 
 Example /seplugins/gclite_filter.txt:
@@ -57,7 +57,7 @@ Known issues:
 
 Changelog
 v1.8:
-[+]Add gclite_filter.txt section format with device-specific paths (ms0:/ or ef0:/) and full paths for hiding apps. (See example gclite_filter.txt a few paragraphs above.)
+[+]Divide gclite_filter.txt by sections (Categories vs Apps) with optional device-specific indicators (ms0:/ or ef0:/) and filepaths for hiding apps. (See example gclite_filter.txt a few paragraphs above.)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
