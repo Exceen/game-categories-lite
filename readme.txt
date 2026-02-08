@@ -18,7 +18,7 @@ Sections supported:
 ===HIDDEN APPS=== (full paths, optional ms0:/ or ef0:/ prefix)
 
 
-Example gclite_filters.txt:
+Example /seplugins/gclite_filters.txt:
 ===HIDDEN CATEGORIES===
 Emulators
 ms0, PSP
