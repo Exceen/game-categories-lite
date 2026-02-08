@@ -1,11 +1,11 @@
-Game Categories Lite
+Game Categories Lite (v1.8 Homebrew Sorter Ultimate Edition)
 
 This plugin is based and uses source code from Game Categories Revised v12 (GCR)
 and Game Categories Light v1.3 (GCL), both created by Bubbletune. Compatible with
 6.20, 6.3x and 6.6X CFW.
 
-I changed the name of the project (doing a fork in the process) to avoid confusion
-with GCL and GCR (the plugin is based heavily in GCL since it doesn't use a
+I (i.e. the original author) changed the name of the project (doing a fork in the process) 
+to avoid confusion with GCL and GCR (the plugin is based heavily in GCL since it doesn't use a
 kernel/user approach).
 
 You can configure the folder prefix (use CAT_ for folders or not), showing uncategorized
