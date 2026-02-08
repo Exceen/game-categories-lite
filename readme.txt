@@ -26,8 +26,8 @@ ef0, Homebrew
 
 ===HIDDEN APPS===
 ms0:/PSP/GAME/TempGBA
-ef0:/PSP/GAME/UO gpSP kai
-ms0:/PSP/GAME/APP
+ms0:/PSP/GAME/Emulators/s9xTYLme_mod
+ms0:/PSP/GAME/PS1/Final Fantasy VII
 
 
 If you want a translation of the visible options then edit the file category_lite_en.txt
