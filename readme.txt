@@ -30,15 +30,15 @@ ms0:/PSP/GAME/PS1/Final Fantasy VII
 
 These enhancements were made to add the ability to specify the device and/or filepath where 
 the category/game/update/dlc folder you want to hide resides. The goal in adding this granularity 
-in filtering was to avoid the admittedly minuscule and relatively inconsequential situation of 
-inadvertently hiding folders with the same name stored across multiple devices/categories. But it 
-was important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact apps 
-you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
+in filtering was to avoid the admittedly rare and relatively inconsequential accident of 
+unintentionally hiding folders with the same name stored across multiple devices/categories. But it 
+was important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact filepath 
+of apps you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
 
 
 Alternatively, you can still use the legacy gclite_filter.txt file format, where you simply enter the 
 folder name of an update/game/dlc folder per line. But unlike past versions of the plugin, the folder 
-names are case-INsensitive.
+names are case-INsensitive (so a line that says "ucus98744" will still hide folders named "UCUS98744").
 
 
 >> Example legacy-format /seplugins/gclite_filter.txt:
