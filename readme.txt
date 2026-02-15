@@ -46,7 +46,8 @@ UCES01264
 
 
 NOTE: Legacy-format gclite_filter.txt files will be auto-converted to the new "===SECTION==="
-gclite_filter.txt format if you run my "Homebrew Sorter Ultimate" app.
+gclite_filter.txt format if you run my "Homebrew Sorter Ultimate" app. (You can hide 
+update/game/dlc folders directly in the "Homebrew Sorter Ultimate app.)
 
 ------------------------------------------
 Additional Info:
