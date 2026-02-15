@@ -46,7 +46,7 @@ UCES01264
 
 
 NOTE: Legacy-format gclite_filter.txt files will be auto-converted to the new "===SECTION==="
-gclite_filter.txt format if you run my "Homebrew Sorter Ultimate" app. (You can maek adjustments
+gclite_filter.txt format if you run my "Homebrew Sorter Ultimate" app. (You can make adjustments
 to the entries in gclite_filter.txt/decide what apps & categories to hide on the XMB directly 
 from the "Homebrew Sorter Ultimate" app's GUI.)
 
