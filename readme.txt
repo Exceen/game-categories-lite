@@ -1,7 +1,8 @@
 Game Categories Lite v1.8
 
 The main differences in this version are the re-stabilization of the visibility of the
-Game Categories options listed within the System Settings (compared to v1.7), as well as (optional) enhancements to the gclite_filter.txt file, including hiding entire 
+Game Categories options listed within the System Settings (compared to v1.7), as well as 
+(optional) enhancements to the gclite_filter.txt file, including hiding entire 
 categories on the XMB.
 
 ------------------------------------------
