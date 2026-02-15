@@ -68,7 +68,7 @@ Known issues:
 ------------------------------------------
 >> Unknown if fixable:
 * Change of category in the PSPGo requires a VSH reset.
-* Vanilla (non-ARK) Adrenaline may require enabling the "Category prefixes" setting.
+* Vanilla (non-ARK) Adrenaline may require enabling the "Category prefix" setting in System Settings.
 
 >> Unrelated to gclite:
 * ME & vanilla (non-ARK) Adrenaline don't merge the categories with the same name between /ISO and /PSP/GAME.
