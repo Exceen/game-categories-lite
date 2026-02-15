@@ -1,8 +1,8 @@
 Game Categories Lite v1.8
 
-The main differences in this version are the stabilization in the visibility of the
-Game Categories options listed within the System Settings, as well as (optional) 
-enhancements to the gclite_filter.txt file, including hiding entire categories on the XMB.
+The main differences in this version are the re-stabilization of the visibility of the
+Game Categories options listed within the System Settings (compared to v1.7), as well as (optional) enhancements to the gclite_filter.txt file, including hiding entire 
+categories on the XMB.
 
 ------------------------------------------
 Enhanced gclite_filter.txt Info:
@@ -85,7 +85,7 @@ Changelog:
 ------------------------------------------
 v1.8:
 [+]Option to divide gclite_filter.txt into sections (Categories & Apps) with optional device-specific indicators (ms0 and ef0) and filepaths for hiding apps. (See "Enhanced gclite_filter.txt Info" section above.)
-[!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
+[!]Re-stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
 v1.6:
