@@ -1,13 +1,12 @@
-Game Categories Lite v1.8 - "Homebrew Sorter Ultimate" Edition
+Game Categories Lite v1.8
 
---------------------------------------------------------------------------------------------------
-New Plugin Readme Section:
---------------------------------------------------------------------------------------------------
-
-The main differences in this version are stabilization in the visibility of the
+The main differences in this version are the stabilization in the visibility of the
 Game Categories options listed within the System Settings, as well as modifications &
 enhancements to the gclite_filter.txt file, including hiding entire categories on the XMB.
 
+------------------------------------------
+Enhanced gclite_filter.txt Info:
+------------------------------------------
 If you want to hide certain update/game/dlc on the XMB (no ISOs), create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
 Sections supported:
@@ -15,7 +14,7 @@ Sections supported:
 ===HIDDEN APPS=== (filepaths, optional "ms0:/" or "ef0:/" prefix. ISOs not supported.)
 
 
-Example /seplugins/gclite_filter.txt:
+>> Example /seplugins/gclite_filter.txt:
 ===HIDDEN CATEGORIES===
 Emulators
 ms0, PSP
@@ -35,24 +34,23 @@ was important for my "Homebrew Sorter Ultimate" app to have the ability to defin
 you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
 
 
-Alternatively, you can still use the legacy gclite_filter.txt file format, where you simply have the 
-folder name of a game/dlc/update folder per line. But unlike past versions of the plugin, the folder 
+Alternatively, you can still use the legacy gclite_filter.txt file format, where you simply enter the 
+folder name of an update/game/dlc folder per line. But unlike past versions of the plugin, the folder 
 names are case-INsensitive.
 
 
-Example legacy-format /seplugins/gclite_filter.txt:
+>> Example legacy-format /seplugins/gclite_filter.txt:
 UCUS98744
 ISO_TOOL
 UCES01264
 
 
 NOTE: Legacy-format gclite_filter.txt files will be auto-converted to the new "===SECTION==="
-gclite_filter.txt format if you open my "Homebrew Sorter Ultimate" app.
+gclite_filter.txt format if you run my "Homebrew Sorter Ultimate" app.
 
---------------------------------------------------------------------------------------------------
-Legacy Plugin Readme Section:
---------------------------------------------------------------------------------------------------
-
+------------------------------------------
+Additional Info:
+------------------------------------------
 If you want a translation of the visible options then edit the file category_lite_en.txt
 and save it using the language code that first you (e.g. "es" for spanish).
 
@@ -62,9 +60,12 @@ Languages supported: "ja", "en", "fr", "es", "de", "it", "nl", "pt", "ru", "ko",
 
 Notes: make sure that this is the 1st plugin listed in vsh.txt
 
+------------------------------------------
 Known issues:
+------------------------------------------
 >> Unknown if fixable:
 * Change of category in the PSPGo requires a VSH reset.
+* Vanilla (non-ARK) Adrenaline may require enabling the "Category prefixes" setting.
 
 >> Unrelated to gclite:
 * ME & vanilla (non-ARK) Adrenaline don't merge the categories with the same name between /ISO and /PSP/GAME.
@@ -76,9 +77,11 @@ Known issues:
   Note: the japanese and other non-ascii characters are 2 bytes wide, e.g.: カラフル counts
   as 8 chars.
 
-Changelog
+------------------------------------------
+Changelog:
+------------------------------------------
 v1.8:
-[+]Divide gclite_filter.txt into sections (Categories & Apps) with optional device-specific indicators (ms0 and ef0) and filepaths for hiding apps. (See example gclite_filter.txt a few paragraphs above.)
+[+]Option to divide gclite_filter.txt into sections (Categories & Apps) with optional device-specific indicators (ms0 and ef0) and filepaths for hiding apps. (See "Enhanced gclite_filter.txt Info" section above.)
 [!]Stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
