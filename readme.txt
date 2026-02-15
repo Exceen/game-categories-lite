@@ -9,7 +9,8 @@ Enhanced gclite_filter.txt Info:
 ------------------------------------------
 If you want to hide certain update/game/dlc on the XMB (no ISOs), create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
-Sections supported:
+
+>> Sections supported:
 ===HIDDEN CATEGORIES=== (category names, optional "ms0," or "ef0," prefix.)
 ===HIDDEN APPS=== (filepaths, optional "ms0:/" or "ef0:/" prefix. ISOs not supported.)
 
