@@ -1,8 +1,12 @@
 Game Categories Lite v1.8 - "Homebrew Sorter Ultimate" Edition
 
+--------------------------------------------------------------------------------------------------
+New Plugin Readme Section:
+--------------------------------------------------------------------------------------------------
+
 The main differences in this version are stabilization in the visibility of the
 Game Categories options listed within the System Settings, as well as modifications &
-enhancements to the gclite_filter.txt file.
+enhancements to the gclite_filter.txt file, including hiding entire categories on the XMB.
 
 If you want to hide certain update/game/dlc on the XMB (no ISOs), create a file named gclite_filter.txt
 and add sectioned entries as outlined below. Put the file in your seplugins folder.
@@ -29,6 +33,25 @@ in filtering was to avoid the admittedly minuscule and relatively inconsequentia
 inadvertently hiding folders with the same name stored across multiple devices/categories. But it 
 was important for my "Homebrew Sorter Ultimate" app to have the ability to define the exact apps 
 you want to hide, and on which PSP Go storage device (Memory Stick vs. Internal Storage).
+
+
+Alternatively, you can still use the legacy gclite_filter.txt file format, where you simply have the 
+folder name of a game/dlc/update folder per line. But unlike past versions of the plugin, the folder 
+names are case-INsensitive.
+
+
+Example legacy-format /seplugins/gclite_filter.txt:
+UCUS98744
+ISO_TOOL
+UCES01264
+
+
+NOTE: Legacy-format gclite_filter.txt files will be auto-converted to the new "===SECTION==="
+gclite_filter.txt format if you open my "Homebrew Sorter Ultimate" app.
+
+--------------------------------------------------------------------------------------------------
+Legacy Plugin Readme Section:
+--------------------------------------------------------------------------------------------------
 
 If you want a translation of the visible options then edit the file category_lite_en.txt
 and save it using the language code that first you (e.g. "es" for spanish).

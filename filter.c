@@ -43,6 +43,25 @@ static char ascii_tolower(char c) {
     return c;
 }
 
+static int ascii_equals_ignore_case(const char *a, const char *b) {
+    if(!a || !b) return 0;
+    while(*a && *b) {
+        if(ascii_tolower(*a++) != ascii_tolower(*b++)) return 0;
+    }
+    return (*a == '\0' && *b == '\0');
+}
+
+static int is_legacy_name_only_entry(const char *entry) {
+    if(!entry || !*entry) return 0;
+    if(strchr(entry, '/') || strchr(entry, '\\')) return 0;
+    if(sce_paf_private_strlen(entry) >= 4 && entry[3] == ':') return 0;
+    return 1;
+}
+
+static int is_comment_line(const char *line) {
+    return (line && (line[0] == '#' || line[0] == ';'));
+}
+
 static int is_iso_ext(const char *name) {
     const char *ext = strrchr(name, '.');
     if(!ext) return 0;
@@ -935,14 +954,26 @@ int check_game_filter_for(const char *path, int location) {
         kprintf("check_game_filter_for: skipping ISO entry [%s]\n", path);
         return 0;
     }
+    const char *norm_leaf = strrchr(norm_path, '/');
+    norm_leaf = norm_leaf ? (norm_leaf + 1) : norm_path;
     kprintf("checking <<%s>> in game filter\n", path);
     while(c) {
         while(!*buf) buf++;
-        normalize_game_path(buf, norm_filter, sizeof(norm_filter));
-        kprintf("veryfing %s\n", norm_filter);
-        if(sce_paf_private_strcmp(norm_filter, norm_path) == 0) {
-            kprintf("match for [%s]\n", path);
-            return 1;
+        if(is_legacy_name_only_entry(buf)) {
+            // Legacy one-name-per-line behavior (v1.7 style), case-insensitive.
+            // Applies across all categories/devices by matching only the folder leaf.
+            kprintf("veryfing legacy-name %s vs leaf %s\n", buf, norm_leaf);
+            if(ascii_equals_ignore_case(buf, norm_leaf)) {
+                kprintf("legacy name match for [%s]\n", path);
+                return 1;
+            }
+        } else {
+            normalize_game_path(buf, norm_filter, sizeof(norm_filter));
+            kprintf("veryfing %s\n", norm_filter);
+            if(sce_paf_private_strcmp(norm_filter, norm_path) == 0) {
+                kprintf("match for [%s]\n", path);
+                return 1;
+            }
         }
         buf += sce_paf_private_strlen(buf);
         c--;
@@ -1142,12 +1173,16 @@ static int load_filters() {
 
     enum { SEC_NONE, SEC_BLACKLIST, SEC_HIDDEN_CATS, SEC_HIDDEN_APPS };
     int section = SEC_NONE;
+    int has_sections = 0;
     int game_count[2] = {0, 0};
     int cat_count[2] = {0, 0};
     SceSize game_bytes[2] = {0, 0};
     SceSize cat_bytes[2] = {0, 0};
 
     char linebuf[512];
+    // Detect whether this file uses v1.8 sectioned format.
+    // If no known section headers exist, fall back to legacy v1.7-style
+    // one-name-per-line hidden app entries.
     u32 pos = 0, start = 0;
     while(pos <= sz) {
         if(pos == sz || raw[pos] == '\n' || raw[pos] == '\r') {
@@ -1158,7 +1193,39 @@ static int load_filters() {
                 linebuf[n] = '\0';
                 trim_inplace(linebuf);
                 if(*linebuf) {
-                    if(stricmp_ascii(linebuf, "===CATEGORIES RENAME BLACKLIST===") == 0) section = SEC_BLACKLIST;
+                    if(stricmp_ascii(linebuf, "===CATEGORIES RENAME BLACKLIST===") == 0 ||
+                       stricmp_ascii(linebuf, "===HIDDEN CATEGORIES===") == 0 ||
+                       stricmp_ascii(linebuf, "===HIDDEN APPS===") == 0) {
+                        has_sections = 1;
+                        break;
+                    }
+                }
+            }
+            if(pos + 1 < sz && raw[pos] == '\r' && raw[pos + 1] == '\n') pos++;
+            start = pos + 1;
+        }
+        pos++;
+    }
+
+    if(!has_sections) {
+        kprintf("gclite_filter legacy fallback mode: headerless list detected\n");
+    }
+
+    section = SEC_NONE;
+    pos = 0;
+    start = 0;
+    while(pos <= sz) {
+        if(pos == sz || raw[pos] == '\n' || raw[pos] == '\r') {
+            u32 len = (pos > start) ? (pos - start) : 0;
+            if(len > 0) {
+                u32 n = (len >= sizeof(linebuf)) ? (sizeof(linebuf) - 1) : len;
+                sce_paf_private_memcpy(linebuf, raw + start, n);
+                linebuf[n] = '\0';
+                trim_inplace(linebuf);
+                if(*linebuf) {
+                    if(is_comment_line(linebuf)) {
+                        // ignore
+                    } else if(stricmp_ascii(linebuf, "===CATEGORIES RENAME BLACKLIST===") == 0) section = SEC_BLACKLIST;
                     else if(stricmp_ascii(linebuf, "===HIDDEN CATEGORIES===") == 0) section = SEC_HIDDEN_CATS;
                     else if(stricmp_ascii(linebuf, "===HIDDEN APPS===") == 0) section = SEC_HIDDEN_APPS;
                     else if(section == SEC_HIDDEN_CATS) {
@@ -1176,6 +1243,20 @@ static int load_filters() {
                             }
                         }
                     } else if(section == SEC_HIDDEN_APPS) {
+                        int loc; char val[256];
+                        if(parse_device_path(linebuf, &loc, val, sizeof(val))) {
+                            game_count[loc]++;
+                            game_bytes[loc] += sce_paf_private_strlen(val) + 1;
+                        } else if(!has_device_prefix(linebuf)) {
+                            int l = sce_paf_private_strlen(linebuf);
+                            if(l > 0) {
+                                game_count[MEMORY_STICK]++;
+                                game_count[INTERNAL_STORAGE]++;
+                                game_bytes[MEMORY_STICK] += l + 1;
+                                game_bytes[INTERNAL_STORAGE] += l + 1;
+                            }
+                        }
+                    } else if(!has_sections) {
                         int loc; char val[256];
                         if(parse_device_path(linebuf, &loc, val, sizeof(val))) {
                             game_count[loc]++;
@@ -1221,7 +1302,9 @@ static int load_filters() {
                 linebuf[n] = '\0';
                 trim_inplace(linebuf);
                 if(*linebuf) {
-                    if(stricmp_ascii(linebuf, "===CATEGORIES RENAME BLACKLIST===") == 0) section = SEC_BLACKLIST;
+                    if(is_comment_line(linebuf)) {
+                        // ignore
+                    } else if(stricmp_ascii(linebuf, "===CATEGORIES RENAME BLACKLIST===") == 0) section = SEC_BLACKLIST;
                     else if(stricmp_ascii(linebuf, "===HIDDEN CATEGORIES===") == 0) section = SEC_HIDDEN_CATS;
                     else if(stricmp_ascii(linebuf, "===HIDDEN APPS===") == 0) section = SEC_HIDDEN_APPS;
                     else if(section == SEC_HIDDEN_CATS) {
@@ -1247,6 +1330,28 @@ static int load_filters() {
                             }
                         }
                     } else if(section == SEC_HIDDEN_APPS) {
+                        int loc; char val[256];
+                        if(parse_device_path(linebuf, &loc, val, sizeof(val)) && game_ptr[loc]) {
+                            int l = sce_paf_private_strlen(val);
+                            sce_paf_private_memcpy(game_ptr[loc], val, l);
+                            game_ptr[loc][l] = '\0';
+                            game_ptr[loc] += l + 1;
+                        } else if(!has_device_prefix(linebuf)) {
+                            int l = sce_paf_private_strlen(linebuf);
+                            if(l > 0) {
+                                if(game_ptr[MEMORY_STICK]) {
+                                    sce_paf_private_memcpy(game_ptr[MEMORY_STICK], linebuf, l);
+                                    game_ptr[MEMORY_STICK][l] = '\0';
+                                    game_ptr[MEMORY_STICK] += l + 1;
+                                }
+                                if(game_ptr[INTERNAL_STORAGE]) {
+                                    sce_paf_private_memcpy(game_ptr[INTERNAL_STORAGE], linebuf, l);
+                                    game_ptr[INTERNAL_STORAGE][l] = '\0';
+                                    game_ptr[INTERNAL_STORAGE] += l + 1;
+                                }
+                            }
+                        }
+                    } else if(!has_sections) {
                         int loc; char val[256];
                         if(parse_device_path(linebuf, &loc, val, sizeof(val)) && game_ptr[loc]) {
                             int l = sce_paf_private_strlen(val);
