@@ -86,7 +86,7 @@ Changelog:
 ------------------------------------------
 v1.8:
 [+]Option to divide gclite_filter.txt into sections (Categories & Apps) with optional device-specific indicators (ms0 and ef0) and filepaths for hiding apps. (See "Enhanced gclite_filter.txt Info" section above.)
-[!]Re-stabilize the inconsistently-displayed lists of options in the various gclite System Settings.
+[!]Re-stabilize v1.7's inconsistently-displayed lists of options in the various gclite System Settings.
 v1.7-js1 (October 17, 2017):
 [!]Fix labels not showing on PSP go internal storage.
 v1.6:
