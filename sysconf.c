@@ -34,7 +34,8 @@
 
 #define OPTION_PAGE "page_psp_config_umd_cache"
 
-char user_buffer[256];
+/* Single definition lives in vshitem.c; see comment there. */
+extern char user_buffer[256];
 static u32 backup[4] = { 0, 0, 0, 0 };
 int context_mode = 0;
 static int last_sysconf_mode = 0;

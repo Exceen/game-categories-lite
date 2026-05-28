@@ -40,6 +40,15 @@ extern int context_mode;
 extern int sysconf_hint_mode;
 extern unsigned long long sysconf_hint_time;
 
+/* Captured in main.c's OnModuleStart vsh_module branch. */
+extern u32 vsh_text_addr;
+
+/* Shared scratch buffer (used for transient UTF-8/wide conversion across
+   vshitem.c / sysconf.c / mode.c). Old GCC defaults (-fcommon) merged the
+   same-named globals in each TU into one; modern GCC (>=10) requires
+   explicit linkage. This is now the single definition; sysconf.c and mode.c
+   declare it `extern`. The XMB calls these formatters serially, so a single
+   transient buffer is safe (and matches the original behaviour). */
 char user_buffer[256];
 
 int unload = 0;
@@ -76,6 +85,128 @@ wchar_t* (*scePafGetText)(void *arg, const char *name) = NULL;
 SceVshItem *(*GetBackupVshItem)(int topitem, u32 unk, SceVshItem *item) = NULL;
 int (*sceVshCommonGuiDisplayContext_func)(void *arg, char *page, char *plane, int width, char *mlist, void *temp1, void *temp2) = NULL;
 
+/* The Games column normally lives at topitem==5, but if XMB Item Hider has
+   fully-hidden one or more categories LEFT of Games (Photo/Music/Video, via
+   HIDE_ALL_*=2 in xmbih.ini), XMBIH shifts Game's topitem down by that
+   count. To stay in sync we read xmbih.ini directly (single source of truth)
+   on the first get_item_location() call -- by then both plugins have finished
+   loading, so the file reflects the current boot's config. Missing/unreadable
+   ini means "no shift", preserving the original behaviour when XMBIH isn't
+   installed.
+
+   Note: HIDE_ALL_EXTRAS is deliberately NOT counted here. XMBIH itself
+   counts it on its side (top_category_requested_hidden recognises index 1),
+   but in practice hiding Extras via the HIDE_ALL_*=2 mechanism glitches the
+   XMB -- the README even tells users to hide Extras via a fake VSH region
+   instead. If a user sets HIDE_ALL_EXTRAS=2 the XMB is broken regardless,
+   so matching that shift here would only sync category_lite to a broken
+   state. Treating it as "not a supported hide" keeps this code aligned
+   with the actually-working subset (Photo/Music/Video). */
+static int xmbih_game_topitem = 5;
+static int xmbih_shift_loaded = 0;
+
+/* Tiny purpose-built ini reader: count how many of the three supported
+   pre-Game HIDE_ALL_* keys in [Global] are set to 2. Only matches a key at
+   line start (after optional whitespace) so comments and other sections
+   can't false-positive. */
+static int count_pregame_hides_in_ini(void) {
+    static char buf[4096];      /* file-scope-static avoids stack pressure */
+    static const char *const keys[3] = {
+        "HIDE_ALL_PHOTO",
+        "HIDE_ALL_MUSIC",
+        "HIDE_ALL_VIDEO"
+    };
+    const char *path;
+    SceUID fd;
+    int n, k, shift = 0;
+
+    path = (model == 4) ? "ef0:/SEPLUGINS/xmbih.ini"
+                        : "ms0:/SEPLUGINS/xmbih.ini";
+    fd = sceIoOpen(path, PSP_O_RDONLY, 0);
+    if (fd < 0)
+        return 0;
+    n = sceIoRead(fd, buf, sizeof(buf) - 1);
+    sceIoClose(fd);
+    if (n <= 0)
+        return 0;
+    buf[n] = 0;
+
+    for (k = 0; k < 3; k++) {
+        int keylen = sce_paf_private_strlen(keys[k]);
+        int i;
+        for (i = 0; i + keylen + 2 < n; i++) {
+            int j, p;
+
+            if (i > 0 && buf[i - 1] != '\n' && buf[i - 1] != '\r')
+                continue;
+            j = i;
+            while (j < n && (buf[j] == ' ' || buf[j] == '\t'))
+                j++;
+            if (buf[j] == '#' || buf[j] == ';' || buf[j] == '[')
+                continue;
+            if (sce_paf_private_strncmp(buf + j, keys[k], keylen) != 0)
+                continue;
+            /* the char after the key name must be ws or '=' so we don't
+               match a longer key that happens to start with this one */
+            p = j + keylen;
+            if (p < n && buf[p] != ' ' && buf[p] != '\t' && buf[p] != '=')
+                continue;
+            while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+                p++;
+            if (p >= n || buf[p] != '=')
+                continue;
+            p++;
+            while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+                p++;
+            /* value must be the digit '2' followed by end-of-token */
+            if (p < n && buf[p] == '2' &&
+                (p + 1 >= n ||
+                 buf[p + 1] == '\r' || buf[p + 1] == '\n' ||
+                 buf[p + 1] == ' '  || buf[p + 1] == '\t' ||
+                 buf[p + 1] == '#'  || buf[p + 1] == ';')) {
+                shift++;
+            }
+            break;
+        }
+    }
+    return shift;
+}
+
+/* Offset where XMBIH installs its topcat-count patch on FW 6.61. XMBIH's
+   PatchVshMain overwrites the original `lw v1, 0xA6C(s2)` (opcode 0x23)
+   with a `jal AdjustTopCategoryCountAndGetCount` (opcode 0x03). Reading
+   the high 6 bits of the instruction tells us reliably whether XMBIH is
+   loaded and active -- no module-presence stub, no shared file, no NID
+   resolution risk. On other firmwares XMBIH doesn't install this patch
+   (the category-hide feature is 6.61-only), so the check returns "not
+   shifting" naturally, which is also correct. */
+#define XMBIH_COUNT_PATCH_OFFSET   0x20890
+#define MIPS_OPCODE_JAL            0x03
+
+static int xmbih_is_active(void) {
+    u32 instr;
+    if (!vsh_text_addr)
+        return 0;
+    instr = *(u32 *)(vsh_text_addr + XMBIH_COUNT_PATCH_OFFSET);
+    return ((instr >> 26) & 0x3F) == MIPS_OPCODE_JAL;
+}
+
+static void load_xmbih_shift(void) {
+    int shift;
+
+    xmbih_shift_loaded = 1;
+
+    /* If XMBIH isn't loaded this boot, vshmain isn't being shifted --
+       Game stays at its native topitem 5 even if xmbih.ini still has
+       pre-Game hides from a previous session. */
+    if (!xmbih_is_active())
+        return;
+
+    shift = count_pregame_hides_in_ini();
+    if (shift > 0 && shift <= 3)
+        xmbih_game_topitem = 5 - shift;
+}
+
 int get_item_location(int topitem, SceVshItem *item) {
     /*
      * 0: sysconf
@@ -83,11 +214,14 @@ int get_item_location(int topitem, SceVshItem *item) {
      * 2: pictures
      * 3: music
      * 4: videos
-     * 5: games
+     * 5: games  (or shifted left by XMBIH if pre-Game categories are hidden)
      * 6: network
      * 7: store
      */
-    if(topitem == 5) {
+    if (!xmbih_shift_loaded)
+        load_xmbih_shift();
+
+    if(topitem == xmbih_game_topitem) {
         if(sce_paf_private_strcmp(item->text, "msgshare_ms") == 0 ||
                 sce_paf_private_strcmp(item->text, "gc4") == 0) {
             return MEMORY_STICK;
