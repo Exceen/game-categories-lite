@@ -86,39 +86,71 @@ SceVshItem *(*GetBackupVshItem)(int topitem, u32 unk, SceVshItem *item) = NULL;
 int (*sceVshCommonGuiDisplayContext_func)(void *arg, char *page, char *plane, int width, char *mlist, void *temp1, void *temp2) = NULL;
 
 /* The Games column normally lives at topitem==5, but if XMB Item Hider has
-   fully-hidden one or more categories LEFT of Games (Photo/Music/Video, via
-   HIDE_ALL_*=2 in xmbih.ini), XMBIH shifts Game's topitem down by that
-   count. To stay in sync we read xmbih.ini directly (single source of truth)
-   on the first get_item_location() call -- by then both plugins have finished
-   loading, so the file reflects the current boot's config. Missing/unreadable
-   ini means "no shift", preserving the original behaviour when XMBIH isn't
-   installed.
+   fully-hidden one or more categories LEFT of Games (Extras/Photo/Music/Video),
+   XMBIH shifts Game's topitem down by that count. To stay in sync we read
+   xmbih.ini directly (single source of truth) on the first get_item_location()
+   call -- by then both plugins have finished loading, so the file reflects the
+   current boot's config. Missing/unreadable ini means "no shift", preserving
+   the original behaviour when XMBIH isn't installed.
 
-   Note: HIDE_ALL_EXTRAS is deliberately NOT counted here. XMBIH itself
-   counts it on its side (top_category_requested_hidden recognises index 1),
-   but in practice hiding Extras via the HIDE_ALL_*=2 mechanism glitches the
-   XMB -- the README even tells users to hide Extras via a fake VSH region
-   instead. If a user sets HIDE_ALL_EXTRAS=2 the XMB is broken regardless,
-   so matching that shift here would only sync category_lite to a broken
-   state. Treating it as "not a supported hide" keeps this code aligned
-   with the actually-working subset (Photo/Music/Video). */
+   Extras (index 1) is counted via MOVE_EXTRAS_ITEMS=1 (XMBIH relocates Extras'
+   CFW items into Game/Settings, then hides the now-empty column) or
+   HIDE_ALL_EXTRAS=2. This used to be excluded because hiding a populated Extras
+   glitched the XMB, but MOVE_EXTRAS_ITEMS empties it first, so the shift is now
+   real and must be matched here or category_lite loses the Game column. */
 static int xmbih_game_topitem = 5;
 static int xmbih_shift_loaded = 0;
 
-/* Tiny purpose-built ini reader: count how many of the three supported
-   pre-Game HIDE_ALL_* keys in [Global] are set to 2. Only matches a key at
-   line start (after optional whitespace) so comments and other sections
-   can't false-positive. */
+/* Return 1 if `key` appears at a line start in buf (after optional whitespace,
+   not in a comment/section) with value exactly the single char `val` followed
+   by end-of-token. Used to read [Global] flags out of xmbih.ini. */
+static int ini_key_is(const char *buf, int n, const char *key, char val) {
+    int keylen = sce_paf_private_strlen(key);
+    int i;
+
+    for (i = 0; i + keylen + 2 < n; i++) {
+        int j, p;
+
+        if (i > 0 && buf[i - 1] != '\n' && buf[i - 1] != '\r')
+            continue;
+        j = i;
+        while (j < n && (buf[j] == ' ' || buf[j] == '\t'))
+            j++;
+        if (buf[j] == '#' || buf[j] == ';' || buf[j] == '[')
+            continue;
+        if (sce_paf_private_strncmp(buf + j, key, keylen) != 0)
+            continue;
+        /* the char after the key name must be ws or '=' so we don't match a
+           longer key that happens to start with this one */
+        p = j + keylen;
+        if (p < n && buf[p] != ' ' && buf[p] != '\t' && buf[p] != '=')
+            continue;
+        while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+            p++;
+        if (p >= n || buf[p] != '=')
+            continue;
+        p++;
+        while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+            p++;
+        if (p < n && buf[p] == val &&
+            (p + 1 >= n ||
+             buf[p + 1] == '\r' || buf[p + 1] == '\n' ||
+             buf[p + 1] == ' '  || buf[p + 1] == '\t' ||
+             buf[p + 1] == '#'  || buf[p + 1] == ';'))
+            return 1;
+        return 0;   /* key found but value didn't match */
+    }
+    return 0;
+}
+
+/* Count how many pre-Game top categories XMBIH hides this boot, by reading the
+   relevant [Global] flags from xmbih.ini. Only matches keys at line start so
+   comments/other sections can't false-positive. */
 static int count_pregame_hides_in_ini(void) {
     static char buf[4096];      /* file-scope-static avoids stack pressure */
-    static const char *const keys[3] = {
-        "HIDE_ALL_PHOTO",
-        "HIDE_ALL_MUSIC",
-        "HIDE_ALL_VIDEO"
-    };
     const char *path;
     SceUID fd;
-    int n, k, shift = 0;
+    int n, shift = 0;
 
     path = (model == 4) ? "ef0:/SEPLUGINS/xmbih.ini"
                         : "ms0:/SEPLUGINS/xmbih.ini";
@@ -131,44 +163,18 @@ static int count_pregame_hides_in_ini(void) {
         return 0;
     buf[n] = 0;
 
-    for (k = 0; k < 3; k++) {
-        int keylen = sce_paf_private_strlen(keys[k]);
-        int i;
-        for (i = 0; i + keylen + 2 < n; i++) {
-            int j, p;
+    /* Pre-Game categories fully hidden via XMBIH's HIDE_ALL_*=2 mechanism. */
+    shift += ini_key_is(buf, n, "HIDE_ALL_PHOTO", '2');
+    shift += ini_key_is(buf, n, "HIDE_ALL_MUSIC", '2');
+    shift += ini_key_is(buf, n, "HIDE_ALL_VIDEO", '2');
 
-            if (i > 0 && buf[i - 1] != '\n' && buf[i - 1] != '\r')
-                continue;
-            j = i;
-            while (j < n && (buf[j] == ' ' || buf[j] == '\t'))
-                j++;
-            if (buf[j] == '#' || buf[j] == ';' || buf[j] == '[')
-                continue;
-            if (sce_paf_private_strncmp(buf + j, keys[k], keylen) != 0)
-                continue;
-            /* the char after the key name must be ws or '=' so we don't
-               match a longer key that happens to start with this one */
-            p = j + keylen;
-            if (p < n && buf[p] != ' ' && buf[p] != '\t' && buf[p] != '=')
-                continue;
-            while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
-                p++;
-            if (p >= n || buf[p] != '=')
-                continue;
-            p++;
-            while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
-                p++;
-            /* value must be the digit '2' followed by end-of-token */
-            if (p < n && buf[p] == '2' &&
-                (p + 1 >= n ||
-                 buf[p + 1] == '\r' || buf[p + 1] == '\n' ||
-                 buf[p + 1] == ' '  || buf[p + 1] == '\t' ||
-                 buf[p + 1] == '#'  || buf[p + 1] == ';')) {
-                shift++;
-            }
-            break;
-        }
-    }
+    /* Extras (index 1) is also pre-Game: XMBIH hides the now-empty column when
+       MOVE_EXTRAS_ITEMS=1 (it relocates the CFW items out first) or when
+       HIDE_ALL_EXTRAS=2 is set directly. Either way Game shifts one more. */
+    if (ini_key_is(buf, n, "MOVE_EXTRAS_ITEMS", '1') ||
+        ini_key_is(buf, n, "HIDE_ALL_EXTRAS", '2'))
+        shift++;
+
     return shift;
 }
 
@@ -203,7 +209,7 @@ static void load_xmbih_shift(void) {
         return;
 
     shift = count_pregame_hides_in_ini();
-    if (shift > 0 && shift <= 3)
+    if (shift > 0 && shift <= 4)
         xmbih_game_topitem = 5 - shift;
 }
 
