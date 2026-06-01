@@ -21,6 +21,7 @@
 #include <pspkernel.h>
 #include "categories_lite.h"
 #include "psppaf.h"
+#include "pspdefs.h"
 #include "stub_funcs.h"
 #include "utils.h"
 #include "multims.h"
@@ -40,6 +41,15 @@ extern int context_mode;
 extern int sysconf_hint_mode;
 extern unsigned long long sysconf_hint_time;
 
+/* Captured in main.c's OnModuleStart vsh_module branch. */
+extern u32 vsh_text_addr;
+
+/* Shared scratch buffer (used for transient UTF-8/wide conversion across
+   vshitem.c / sysconf.c / mode.c). Old GCC defaults (-fcommon) merged the
+   same-named globals in each TU into one; modern GCC (>=10) requires
+   explicit linkage. This is now the single definition; sysconf.c and mode.c
+   declare it `extern`. The XMB calls these formatters serially, so a single
+   transient buffer is safe (and matches the original behaviour). */
 char user_buffer[256];
 
 int unload = 0;
@@ -64,6 +74,45 @@ static const char* GC_UNCATEGORIZED_INTERNAL = "gc5";
 static const char* GC_CATEGORY_PREFIX_MS = "gcv_";
 static const char* GC_CATEGORY_PREFIX_INTERNAL = "gcw_";
 
+#define FAKE_REGION_RUSSIA         10
+#define FAKE_REGION_CHINA          11
+#define SE_CONFIG_EX_NID           0x8E426F09
+#define XMBIH_COUNT_PATCH_OFFSET   0x20890
+#define MIPS_OPCODE_JAL            0x03
+
+typedef struct {
+    u32 magic;
+    s16 iso_cache_size;
+    s16 iso_cache_num;
+    u8 iso_cache;
+    u8 iso_cache_partition;
+    u8 umdseek;
+    u8 umdspeed;
+    u8 cpubus_clock;
+    u8 disable_pause;
+    u8 hidedlc;
+    u8 umdregion;
+    u8 vshregion;
+    u8 usbdevice;
+    u8 usbcharge;
+    u8 hidemac;
+    u8 noanalog;
+    u8 qaflags;
+    u8 launcher_mode;
+    u8 hidepics;
+    u8 usbdevice_rdonly;
+    u8 skiplogos;
+    u8 noumd;
+    u8 hibblock;
+    u8 oldplugin;
+    u8 msspeed;
+    u8 noled;
+    u8 wpa2;
+    u8 force_high_memory;
+    u8 custom_update;
+} SEConfig;
+
+typedef SEConfig *(*GetSEConfigExFunc)(SEConfig *config, int size);
 
 int vsh_id[2] = { -1, -1 };
 int vsh_action_arg[2] = { -1, -1 };
@@ -76,6 +125,155 @@ wchar_t* (*scePafGetText)(void *arg, const char *name) = NULL;
 SceVshItem *(*GetBackupVshItem)(int topitem, u32 unk, SceVshItem *item) = NULL;
 int (*sceVshCommonGuiDisplayContext_func)(void *arg, char *page, char *plane, int width, char *mlist, void *temp1, void *temp2) = NULL;
 
+/* The Games column normally lives at topitem==5, but if XMB Item Hider has
+   fully-hidden one or more categories LEFT of Games (Extras/Photo/Music/Video),
+   XMBIH shifts Game's topitem down by that count. To stay in sync we read
+   xmbih.ini directly (single source of truth) on the first get_item_location()
+   call -- by then both plugins have finished loading, so the file reflects the
+   current boot's config. Missing/unreadable ini means "no shift", preserving
+   the original behaviour when XMBIH isn't installed.
+
+   Extras (index 1) is counted when HIDE_ALL_EXTRAS=2 is active in XMBIH.
+   In wad11656's XMB Item Hider fork, that path already relocates the ARK CFW
+   items before hiding Extras, so the Game shift is real and must be matched
+   here. Fake-region Extras hiding is handled separately because it does not
+   live in xmbih.ini. */
+static int xmbih_game_topitem = 5;
+static int xmbih_shift_loaded = 0;
+static int fake_region_loaded = 0;
+static int fake_region_hides_extras = 0;
+
+/* Return 1 if `key` appears at a line start in buf (after optional whitespace,
+   not in a comment/section) with value exactly the single char `val` followed
+   by end-of-token. Used to read [Global] flags out of xmbih.ini. */
+static int ini_key_is(const char *buf, int n, const char *key, char val) {
+    int keylen = sce_paf_private_strlen(key);
+    int i;
+
+    for (i = 0; i + keylen + 2 < n; i++) {
+        int j, p;
+
+        if (i > 0 && buf[i - 1] != '\n' && buf[i - 1] != '\r')
+            continue;
+        j = i;
+        while (j < n && (buf[j] == ' ' || buf[j] == '\t'))
+            j++;
+        if (buf[j] == '#' || buf[j] == ';' || buf[j] == '[')
+            continue;
+        if (sce_paf_private_strncmp(buf + j, key, keylen) != 0)
+            continue;
+        /* the char after the key name must be ws or '=' so we don't match a
+           longer key that happens to start with this one */
+        p = j + keylen;
+        if (p < n && buf[p] != ' ' && buf[p] != '\t' && buf[p] != '=')
+            continue;
+        while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+            p++;
+        if (p >= n || buf[p] != '=')
+            continue;
+        p++;
+        while (p < n && (buf[p] == ' ' || buf[p] == '\t'))
+            p++;
+        if (p < n && buf[p] == val &&
+            (p + 1 >= n ||
+             buf[p + 1] == '\r' || buf[p + 1] == '\n' ||
+             buf[p + 1] == ' '  || buf[p + 1] == '\t' ||
+             buf[p + 1] == '#'  || buf[p + 1] == ';'))
+            return 1;
+        return 0;   /* key found but value didn't match */
+    }
+    return 0;
+}
+
+/* Count how many pre-Game top categories XMBIH hides this boot, by reading the
+   relevant [Global] flags from xmbih.ini. Only matches keys at line start so
+   comments/other sections can't false-positive. */
+static int count_pregame_hides_in_ini(void) {
+    static char buf[4096];      /* file-scope-static avoids stack pressure */
+    const char *path;
+    SceUID fd;
+    int n, shift = 0;
+
+    path = (model == 4) ? "ef0:/SEPLUGINS/xmbih.ini"
+                        : "ms0:/SEPLUGINS/xmbih.ini";
+    fd = sceIoOpen(path, PSP_O_RDONLY, 0);
+    if (fd < 0)
+        return 0;
+    n = sceIoRead(fd, buf, sizeof(buf) - 1);
+    sceIoClose(fd);
+    if (n <= 0)
+        return 0;
+    buf[n] = 0;
+
+    /* Pre-Game categories fully hidden via XMBIH's HIDE_ALL_*=2 mechanism. */
+    shift += ini_key_is(buf, n, "HIDE_ALL_PHOTO", '2');
+    shift += ini_key_is(buf, n, "HIDE_ALL_MUSIC", '2');
+    shift += ini_key_is(buf, n, "HIDE_ALL_VIDEO", '2');
+
+    /* Extras (index 1) is also pre-Game when XMBIH fully hides it. */
+    if (ini_key_is(buf, n, "HIDE_ALL_EXTRAS", '2'))
+        shift++;
+
+    return shift;
+}
+
+static int xmbih_is_active(void) {
+    u32 instr;
+    if (!vsh_text_addr)
+        return 0;
+    instr = *(u32 *)(vsh_text_addr + XMBIH_COUNT_PATCH_OFFSET);
+    return ((instr >> 26) & 0x3F) == MIPS_OPCODE_JAL;
+}
+
+static int is_ark_custom_item(const char *text) {
+    return sce_paf_private_strcmp(text, "xmbmsgtop_sysconf_configuration") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_sysconf_plugins") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_custom_launcher") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_custom_app") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_150_reboot") == 0;
+}
+
+static int fake_region_value_hides_extras(int vshregion) {
+    return vshregion == FAKE_REGION_RUSSIA ||
+           vshregion == FAKE_REGION_CHINA;
+}
+
+static int extras_hidden_by_fake_region(void) {
+    if (!fake_region_loaded) {
+        GetSEConfigExFunc get_se_config_ex = NULL;
+
+        fake_region_loaded = 1;
+
+        get_se_config_ex = (GetSEConfigExFunc)sctrlHENFindFunction(
+            "SystemCtrlForUser", "SystemCtrlForUser", SE_CONFIG_EX_NID);
+        if (get_se_config_ex) {
+            SEConfig se_config;
+            sce_paf_private_memset(&se_config, 0, sizeof(se_config));
+            if (get_se_config_ex(&se_config, sizeof(se_config))) {
+                fake_region_hides_extras =
+                    fake_region_value_hides_extras(se_config.vshregion);
+            }
+        }
+    }
+
+    return fake_region_hides_extras;
+}
+
+static void load_xmbih_shift(void) {
+    int shift;
+
+    xmbih_shift_loaded = 1;
+    shift = 0;
+
+    if (xmbih_is_active())
+        shift = count_pregame_hides_in_ini();
+
+    if (extras_hidden_by_fake_region())
+        shift++;
+    if (shift > 0 && shift <= 4)
+        xmbih_game_topitem = 5 - shift;
+}
+
 int get_item_location(int topitem, SceVshItem *item) {
     /*
      * 0: sysconf
@@ -83,11 +281,14 @@ int get_item_location(int topitem, SceVshItem *item) {
      * 2: pictures
      * 3: music
      * 4: videos
-     * 5: games
+     * 5: games  (or shifted left by XMBIH if pre-Game categories are hidden)
      * 6: network
      * 7: store
      */
-    if(topitem == 5) {
+    if (!xmbih_shift_loaded)
+        load_xmbih_shift();
+
+    if(topitem == xmbih_game_topitem) {
         if(sce_paf_private_strcmp(item->text, "msgshare_ms") == 0 ||
                 sce_paf_private_strcmp(item->text, "gc4") == 0) {
             return MEMORY_STICK;
@@ -115,6 +316,15 @@ SceVshItem *GetBackupVshItemPatched(u32 unk, int topitem, SceVshItem *item) {
 
 int AddVshItemPatched(void *arg, int topitem, SceVshItem *item) {
     int location;
+
+    if (!xmbih_shift_loaded)
+        load_xmbih_shift();
+
+    if (topitem == 1 && is_ark_custom_item(item->text) &&
+            extras_hidden_by_fake_region()) {
+        topitem = xmbih_game_topitem;
+    }
+
     if((location = get_item_location(topitem, item)) >= 0) {
         load_config();
         load_filter();

@@ -44,6 +44,10 @@ char currfw[5];
 u32 text_addr_game;
 u32 text_size_game;
 
+/* Captured in OnModuleStart's vsh_module branch; used by vshitem.c's
+   load_xmbih_shift to probe vshmain for XMBIH's patch signature. */
+u32 vsh_text_addr = 0;
+
 static STMOD_HANDLER previous;
 
 int OnModuleStart(SceModule2 *mod) {
@@ -66,6 +70,7 @@ int OnModuleStart(SceModule2 *mod) {
 	} else if (sce_paf_private_strcmp(mod->modname, "vsh_module") == 0) {
 
 	    kprintf("loading %s, text_addr: %08X\n", mod->modname, mod->text_addr);
+        vsh_text_addr = mod->text_addr;
         PatchVshmain(mod->text_addr);
         PatchVshmainForSysconf(mod->text_addr);
         PatchVshmainForContext(mod->text_addr);

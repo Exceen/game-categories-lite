@@ -16,11 +16,19 @@ endif
 
 # use a psp-filer with VSH support or the plugin won't load on PRO firmware
 # edit: 6.20 Pro won't work with this. Bugs, bugs everywhere....
-all: category_lang
+all: category_lang install-release
 #	-psp-packer category_lite.prx
 
 category_lang:
 	bin2c lang/category_lite_$(CONFIG_LANG).txt category_lite_lang.h category_lite_lang
+
+# Drop a copy of the built PRX into release/ so it's the single canonical
+# location for the ready-to-flash binary.
+.PHONY: install-release
+install-release: $(TARGET).prx
+	@mkdir -p release
+	@cp -f $(TARGET).prx release/$(TARGET).prx
+	@echo "  -> release/$(TARGET).prx"
 
 EXTRA_WARNS= -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wwrite-strings -Wunreachable-code
 CFLAGS =-O2 -Wall -G0 -std=c99 -fshort-wchar -fcommon $(EXTRA_WARNS)
