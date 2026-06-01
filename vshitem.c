@@ -21,6 +21,7 @@
 #include <pspkernel.h>
 #include "categories_lite.h"
 #include "psppaf.h"
+#include "pspdefs.h"
 #include "stub_funcs.h"
 #include "utils.h"
 #include "multims.h"
@@ -73,6 +74,45 @@ static const char* GC_UNCATEGORIZED_INTERNAL = "gc5";
 static const char* GC_CATEGORY_PREFIX_MS = "gcv_";
 static const char* GC_CATEGORY_PREFIX_INTERNAL = "gcw_";
 
+#define FAKE_REGION_RUSSIA         10
+#define FAKE_REGION_CHINA          11
+#define SE_CONFIG_EX_NID           0x8E426F09
+#define XMBIH_COUNT_PATCH_OFFSET   0x20890
+#define MIPS_OPCODE_JAL            0x03
+
+typedef struct {
+    u32 magic;
+    s16 iso_cache_size;
+    s16 iso_cache_num;
+    u8 iso_cache;
+    u8 iso_cache_partition;
+    u8 umdseek;
+    u8 umdspeed;
+    u8 cpubus_clock;
+    u8 disable_pause;
+    u8 hidedlc;
+    u8 umdregion;
+    u8 vshregion;
+    u8 usbdevice;
+    u8 usbcharge;
+    u8 hidemac;
+    u8 noanalog;
+    u8 qaflags;
+    u8 launcher_mode;
+    u8 hidepics;
+    u8 usbdevice_rdonly;
+    u8 skiplogos;
+    u8 noumd;
+    u8 hibblock;
+    u8 oldplugin;
+    u8 msspeed;
+    u8 noled;
+    u8 wpa2;
+    u8 force_high_memory;
+    u8 custom_update;
+} SEConfig;
+
+typedef SEConfig *(*GetSEConfigExFunc)(SEConfig *config, int size);
 
 int vsh_id[2] = { -1, -1 };
 int vsh_action_arg[2] = { -1, -1 };
@@ -93,13 +133,15 @@ int (*sceVshCommonGuiDisplayContext_func)(void *arg, char *page, char *plane, in
    current boot's config. Missing/unreadable ini means "no shift", preserving
    the original behaviour when XMBIH isn't installed.
 
-   Extras (index 1) is counted via MOVE_EXTRAS_ITEMS=1 (XMBIH relocates Extras'
-   CFW items into Game/Settings, then hides the now-empty column) or
-   HIDE_ALL_EXTRAS=2. This used to be excluded because hiding a populated Extras
-   glitched the XMB, but MOVE_EXTRAS_ITEMS empties it first, so the shift is now
-   real and must be matched here or category_lite loses the Game column. */
+   Extras (index 1) is counted when HIDE_ALL_EXTRAS=2 is active in XMBIH.
+   In wad11656's XMB Item Hider fork, that path already relocates the ARK CFW
+   items before hiding Extras, so the Game shift is real and must be matched
+   here. Fake-region Extras hiding is handled separately because it does not
+   live in xmbih.ini. */
 static int xmbih_game_topitem = 5;
 static int xmbih_shift_loaded = 0;
+static int fake_region_loaded = 0;
+static int fake_region_hides_extras = 0;
 
 /* Return 1 if `key` appears at a line start in buf (after optional whitespace,
    not in a comment/section) with value exactly the single char `val` followed
@@ -168,26 +210,12 @@ static int count_pregame_hides_in_ini(void) {
     shift += ini_key_is(buf, n, "HIDE_ALL_MUSIC", '2');
     shift += ini_key_is(buf, n, "HIDE_ALL_VIDEO", '2');
 
-    /* Extras (index 1) is also pre-Game: XMBIH hides the now-empty column when
-       MOVE_EXTRAS_ITEMS=1 (it relocates the CFW items out first) or when
-       HIDE_ALL_EXTRAS=2 is set directly. Either way Game shifts one more. */
-    if (ini_key_is(buf, n, "MOVE_EXTRAS_ITEMS", '1') ||
-        ini_key_is(buf, n, "HIDE_ALL_EXTRAS", '2'))
+    /* Extras (index 1) is also pre-Game when XMBIH fully hides it. */
+    if (ini_key_is(buf, n, "HIDE_ALL_EXTRAS", '2'))
         shift++;
 
     return shift;
 }
-
-/* Offset where XMBIH installs its topcat-count patch on FW 6.61. XMBIH's
-   PatchVshMain overwrites the original `lw v1, 0xA6C(s2)` (opcode 0x23)
-   with a `jal AdjustTopCategoryCountAndGetCount` (opcode 0x03). Reading
-   the high 6 bits of the instruction tells us reliably whether XMBIH is
-   loaded and active -- no module-presence stub, no shared file, no NID
-   resolution risk. On other firmwares XMBIH doesn't install this patch
-   (the category-hide feature is 6.61-only), so the check returns "not
-   shifting" naturally, which is also correct. */
-#define XMBIH_COUNT_PATCH_OFFSET   0x20890
-#define MIPS_OPCODE_JAL            0x03
 
 static int xmbih_is_active(void) {
     u32 instr;
@@ -197,18 +225,51 @@ static int xmbih_is_active(void) {
     return ((instr >> 26) & 0x3F) == MIPS_OPCODE_JAL;
 }
 
+static int is_ark_custom_item(const char *text) {
+    return sce_paf_private_strcmp(text, "xmbmsgtop_sysconf_configuration") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_sysconf_plugins") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_custom_launcher") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_custom_app") == 0 ||
+           sce_paf_private_strcmp(text, "xmbmsgtop_150_reboot") == 0;
+}
+
+static int fake_region_value_hides_extras(int vshregion) {
+    return vshregion == FAKE_REGION_RUSSIA ||
+           vshregion == FAKE_REGION_CHINA;
+}
+
+static int extras_hidden_by_fake_region(void) {
+    if (!fake_region_loaded) {
+        GetSEConfigExFunc get_se_config_ex = NULL;
+
+        fake_region_loaded = 1;
+
+        get_se_config_ex = (GetSEConfigExFunc)sctrlHENFindFunction(
+            "SystemCtrlForUser", "SystemCtrlForUser", SE_CONFIG_EX_NID);
+        if (get_se_config_ex) {
+            SEConfig se_config;
+            sce_paf_private_memset(&se_config, 0, sizeof(se_config));
+            if (get_se_config_ex(&se_config, sizeof(se_config))) {
+                fake_region_hides_extras =
+                    fake_region_value_hides_extras(se_config.vshregion);
+            }
+        }
+    }
+
+    return fake_region_hides_extras;
+}
+
 static void load_xmbih_shift(void) {
     int shift;
 
     xmbih_shift_loaded = 1;
+    shift = 0;
 
-    /* If XMBIH isn't loaded this boot, vshmain isn't being shifted --
-       Game stays at its native topitem 5 even if xmbih.ini still has
-       pre-Game hides from a previous session. */
-    if (!xmbih_is_active())
-        return;
+    if (xmbih_is_active())
+        shift = count_pregame_hides_in_ini();
 
-    shift = count_pregame_hides_in_ini();
+    if (extras_hidden_by_fake_region())
+        shift++;
     if (shift > 0 && shift <= 4)
         xmbih_game_topitem = 5 - shift;
 }
@@ -255,6 +316,15 @@ SceVshItem *GetBackupVshItemPatched(u32 unk, int topitem, SceVshItem *item) {
 
 int AddVshItemPatched(void *arg, int topitem, SceVshItem *item) {
     int location;
+
+    if (!xmbih_shift_loaded)
+        load_xmbih_shift();
+
+    if (topitem == 1 && is_ark_custom_item(item->text) &&
+            extras_hidden_by_fake_region()) {
+        topitem = xmbih_game_topitem;
+    }
+
     if((location = get_item_location(topitem, item)) >= 0) {
         load_config();
         load_filter();
