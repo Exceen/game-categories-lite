@@ -74,6 +74,9 @@ static const char* GC_UNCATEGORIZED_INTERNAL = "gc5";
 static const char* GC_CATEGORY_PREFIX_MS = "gcv_";
 static const char* GC_CATEGORY_PREFIX_INTERNAL = "gcw_";
 
+#define FAKE_REGION_LATIN_AMERICA   6
+#define FAKE_REGION_HONGKONG        8
+#define FAKE_REGION_TAIWAN          9
 #define FAKE_REGION_RUSSIA         10
 #define FAKE_REGION_CHINA          11
 #define FAKE_REGION_DEBUG_TYPE_I   12
@@ -235,7 +238,10 @@ static int is_ark_custom_item(const char *text) {
 }
 
 static int fake_region_value_hides_extras(int vshregion) {
-    return vshregion == FAKE_REGION_RUSSIA ||
+    return vshregion == FAKE_REGION_LATIN_AMERICA ||
+           vshregion == FAKE_REGION_HONGKONG ||
+           vshregion == FAKE_REGION_TAIWAN ||
+           vshregion == FAKE_REGION_RUSSIA ||
            vshregion == FAKE_REGION_CHINA ||
            vshregion == FAKE_REGION_DEBUG_TYPE_I;
 }
