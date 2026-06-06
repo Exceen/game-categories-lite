@@ -74,10 +74,18 @@ int PatchExecuteActionForMultiMs(int *action, int *action_arg) {
 int PatchAddVshItemForMultiMs(void *arg, int topitem, SceVshItem *item, int location) {
     int i = 0;
     Category *p = NULL;
+    /* Return the firmware AddVshItem result of the FIRST folder we add (the one
+       taking the original MS slot). vshmain uses the return value of its
+       AddVshItem call to restore the selection on wake-from-sleep; returning 0
+       (as before) makes that restore fail and the cursor falls to the top of
+       Game. Returning the first folder's value lets it resume on the top
+       Memory Stick category. */
+    int ret = 0, first = 1;
 
     vsh_items[location] = sce_paf_private_malloc(CountCategories(cat_list, location) * sizeof(SceVshItem));
 
     while ((p = GetNextCategory(cat_list, p, location))) {
+        int r;
 
         sce_paf_private_memcpy(&vsh_items[location][i], item, sizeof(SceVshItem));
 
@@ -89,25 +97,30 @@ int PatchAddVshItemForMultiMs(void *arg, int topitem, SceVshItem *item, int loca
             sce_paf_private_snprintf(vsh_items[location][i].text, 37, "gcw_%08X", (u32) p);
         }
         kprintf("adding %s for loc: %i\n", vsh_items[location][i].text, location);
-        AddVshItem(arg, topitem, &vsh_items[location][i]);
+        r = AddVshItem(arg, topitem, &vsh_items[location][i]);
+        if (first) { ret = r; first = 0; }
         i++;
     }
 
     if (!location && (config.uncategorized & ONLY_MS)) {
+        int r;
         sce_paf_private_strcpy(item->text, "gc4");
         item->action_arg = PSPMS_UNCAT_SENTINEL;
         kprintf("adding uncategorized for Memory Stick\n");
-        AddVshItem(arg, topitem, item);
+        r = AddVshItem(arg, topitem, item);
+        if (first) { ret = r; first = 0; }
     }
     if (location && (config.uncategorized & ONLY_IE)) {
+        int r;
         sce_paf_private_strcpy(item->text, "gc5");
         item->action_arg = PSPGO_UNCAT_SENTINEL;
         kprintf("adding uncategorized for Internal Storage\n");
-        AddVshItem(arg, topitem, item);
+        r = AddVshItem(arg, topitem, item);
+        if (first) { ret = r; first = 0; }
     }
 
     global_pos = location;
-    return 0;
+    return ret;
 }
 
 SceVshItem *PatchGetBackupVshItemForMultiMs(SceVshItem *item, SceVshItem *res UNUSED) {
