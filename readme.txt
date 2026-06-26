@@ -84,6 +84,8 @@ Known issues:
 ------------------------------------------
 Changelog:
 ------------------------------------------
+v1.81:
+[+]Compatibility with hidden XMB categories set with github.com/wad11656/XMB-Item-Hider-PSP
 v1.8:
 [+]Option to divide gclite_filter.txt into sections (Categories & Apps) with optional device specification (ms0/ef0) and full filepaths for specifying hidden apps. (See "Enhanced gclite_filter.txt Info" section above.)
 [!]Re-stabilize v1.7's inconsistently-displayed gclite System Settings menu options.
